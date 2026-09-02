@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Свидание ❤️</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #fff1f5, #f8e8ff);
+    color: #2d2430;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(25px) scale(.98);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0) scale(1);
+  }
+  .card {
+    width: min(100%, 430px);
+    text-align: center;
+    background: rgba(255,255,255,.82);
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 28px;
+    padding: 34px 22px;
+    box-shadow: 0 18px 50px rgba(90, 35, 80, .13);
+    backdrop-filter: blur(12px);
+  }
+  .emoji { font-size: 58px; margin-bottom: 12px; animation: float 2.5s ease-in-out infinite; }
+  h1 { font-size: clamp(28px, 8vw, 40px); margin: 0 0 14px; line-height: 1.1; }
+  p { font-size: 18px; line-height: 1.45; margin: 0 0 25px; color: #665866; }
+  .buttons {
+    position: relative;
+    height: 150px;
+    margin-top: 5px;
+  }
+  button {
+    border: 0;
+    border-radius: 999px;
+    padding: 15px 28px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .yes {
+    background: #ff4f81;
+    color: white;
+    box-shadow: 0 9px 22px rgba(255,79,129,.28);
+  }
+  .yes:active { transform: scale(.96); }
+  .no {
+    position: absolute;
+    background: #eee8ed;
+    color: #766b75;
+    left: 50%;
+    top: 78px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .choice-list { display: grid; gap: 12px; }
+  .choice {
+    width: 100%;
+    background: white;
+    color: #403642;
+    border: 2px solid #f0dce6;
+    text-align: left;
+    padding: 16px 18px;
+    box-shadow: 0 5px 15px rgba(80,40,70,.06);
+  }
+  .choice.selected {
+    border-color: #ff4f81;
+    background: #fff0f5;
+    transform: scale(1.02);
+  }
+  .result {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ff3f76;
+    margin: 18px 0 26px;
+  }
+  .small { font-size: 15px; color: #8a7b88; margin-top: 16px; }
+  .restart {
+    background: #302631;
+    color: white;
+    padding: 13px 23px;
+  }
+  .heart {
+    position: fixed;
+    pointer-events: none;
+    font-size: 20px;
+    animation: heartUp 1.7s ease-out forwards;
+  }
+  .shake { animation: shake .28s ease; }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  @keyframes heartUp {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-130px) scale(1.6) rotate(15deg); }
+  }
+</style>
+</head>
+<body>
+
+<section class="screen active" id="screen1">
+  <div class="card" id="card1">
+    <div class="emoji">❤️</div>
+    <h1 id="question"></h1>
+    <p>Подумай хорошенько... хотя правильный ответ очевиден 😏</p>
+    <div class="buttons" id="buttonArea">
+      <button class="yes" id="yesBtn">Да ❤️</button>
+      <button class="no" id="noBtn">Нет 😏</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="screen2">
+  <div class="card">
+    <div class="emoji">🥰</div>
+    <h1>Отлично!</h1>
+    <p>океееей) так, тогда нужно выбрать:</p>
+    <div class="choice-list" id="choices"></div>
+    <p class="small">выбирай</p>
+  </div>
+</section>
+
+<section class="screen" id="screen3">
+  <div class="card">
+    <div class="emoji">🫦</div>
+    <h1>Отличный выбор! ❤️</h1>
+    <p>Тогда сегодня у нас:</p>
+    <div class="result" id="result"></div>
+    <p>Жду тебя с нетерпением 😘</p>
+    <button class="restart" id="restartBtn">Начать сначала</button>
+  </div>
+</section>
+
+<script>
+/* ====== НАСТРОЙКИ — ЗДЕСЬ МОЖНО МЕНЯТЬ ТЕКСТ ====== */
+const settings = {
+  question: "Хочешь меня?",
+  yesButton: "Да, конечно ❤️",
+  noButton: "Нууу нееет 😏",
+
+  choices: [
+    "🕯️ Чувствительный секс с повязкой и свечами",
+    "🚗 Безумный секс в машине на заднем сиденье",
+    "🎥 Просмотр киношки и секс",
+    "🧊 Секс, лёд и наручники"
+  ]
+};
+/* ==================================================== */
+
+const screens = [
+  document.getElementById("screen1"),
+  document.getElementById("screen2"),
+  document.getElementById("screen3")
+];
+
+const question = document.getElementById("question");
+const yesBtn = document.getElementById("yesBtn");
+const noBtn = document.getElementById("noBtn");
+const buttonArea = document.getElementById("buttonArea");
+const card1 = document.getElementById("card1");
+const choices = document.getElementById("choices");
+const result = document.getElementById("result");
+const restartBtn = document.getElementById("restartBtn");
+
+question.textContent = settings.question;
+yesBtn.textContent = settings.yesButton;
+noBtn.textContent = settings.noButton;
+
+function showScreen(number) {
+  screens.forEach((screen, index) => {
+    screen.classList.toggle("active", index === number - 1);
+  });
+}
+
+function createHeart(x, y) {
+  const heart = document.createElement("div");
+  heart.className = "heart";
+  heart.textContent = ["❤️","💕","💖","💗"][Math.floor(Math.random()*4)];
+  heart.style.left = x + "px";
+  heart.style.top = y + "px";
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 1800);
+}
+
+function moveNoButton() {
+  const areaRect = buttonArea.getBoundingClientRect();
+  const btnRect = noBtn.getBoundingClientRect();
+
+  const padding = 5;
+  const maxX = Math.max(padding, areaRect.width - btnRect.width - padding);
+  const maxY = Math.max(padding, areaRect.height - btnRect.height - padding);
+
+  noBtn.style.left = (padding + Math.random() * maxX) + "px";
+  noBtn.style.top = (padding + Math.random() * maxY) + "px";
+  noBtn.style.transform = "none";
+
+  card1.classList.remove("shake");
+  void card1.offsetWidth;
+  card1.classList.add("shake");
+
+  createHeart(
+    window.innerWidth / 2 + (Math.random() * 80 - 40),
+    window.innerHeight / 2
+  );
+}
+
+/* На компьютере убегает при наведении, на телефоне — при попытке нажатия */
+noBtn.addEventListener("mouseenter", moveNoButton);
+noBtn.addEventListener("touchstart", function(e) {
+  e.preventDefault();
+  moveNoButton();
+}, {passive: false});
+noBtn.addEventListener("click", function(e) {
+  e.preventDefault();
+  moveNoButton();
+});
+
+yesBtn.addEventListener("click", () => {
+  createHeart(window.innerWidth/2, window.innerHeight/2);
+  setTimeout(() => showScreen(2), 180);
+});
+
+settings.choices.forEach((choice) => {
+  const btn = document.createElement("button");
+  btn.className = "choice";
+  btn.textContent = choice;
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".choice").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    result.textContent = choice;
+
+    setTimeout(() => {
+      showScreen(3);
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+          createHeart(
+            window.innerWidth * Math.random(),
+            window.innerHeight * (.45 + Math.random() * .25)
+          );
+        }, i * 90);
+      }
+    }, 250);
+  });
+  choices.appendChild(btn);
+});
+
+restartBtn.addEventListener("click", () => {
+  document.querySelectorAll(".choice").forEach(b => b.classList.remove("selected"));
+  noBtn.style.left = "50%";
+  noBtn.style.top = "78px";
+  noBtn.style.transform = "translateX(-50%)";
+  showScreen(1);
+});
+</script>
+</body>
+</html>
